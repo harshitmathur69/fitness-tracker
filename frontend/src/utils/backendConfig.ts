@@ -1,17 +1,15 @@
 // Configuration for backend API
 // Adjust this URL based on where your Flask app is running
 
-// Default URL for local development
-const BASE_URL = "http://localhost:5000";
 
 // Export configuration for use throughout the app
 export const backendConfig = {
-  baseUrl: BASE_URL,
+  baseUrl: process.env.backendUrl,
   endpoints: {
-    videoFeed: `${BASE_URL}/video_feed`,
-    workoutData: `${BASE_URL}/workout_data`,
-    squatData: `${BASE_URL}/squat_data/squat_data`,
-    squatVideoFeed: `${BASE_URL}/squat_data/squat_video_feed`
+    videoFeed: `${process.env.backendUrl}/video_feed`,
+    workoutData: `${process.env.backendUrl}/workout_data`,
+    squatData: `${process.env.backendUrl}/squat_data/squat_data`,
+    squatVideoFeed: `${process.env.backendUrl}/squat_data/squat_video_feed`
   },
   // Helper function to check if backend is reachable
   isBackendAvailable: async (): Promise<boolean> => {
@@ -19,7 +17,7 @@ export const backendConfig = {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 3000);
       
-      const response = await fetch(`${BASE_URL}/workout_data`, {
+      const response = await fetch(`${process.env.backendUrl}/workout_data`, {
         method: 'GET',
         signal: controller.signal
       });
