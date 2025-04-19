@@ -39,7 +39,7 @@ export default function Workout() {
         if (!isAvailable) {
           toast({
             title: "Backend not available",
-            description: `Cannot connect to the workout tracking backend. Make sure it's running on ${process.env.backendUrl}`,
+            description: "Cannot connect to the workout tracking backend. Make sure it's running on http://localhost:5000",
             variant: "destructive"
           });
         }
@@ -179,7 +179,7 @@ export default function Workout() {
           <AlertDescription className="flex flex-col gap-3">
             <p>Cannot connect to the Flask backend server. Please ensure:</p>
             <ul className="list-disc pl-5">
-              <li>The Flask app is running on <code className="bg-gray-100 p-1 rounded">{process.env.backendUrl}</code></li>
+              <li>The Flask app is running on <code className="bg-gray-100 p-1 rounded">http://localhost:5000</code></li>
               <li>CORS is properly configured to allow requests from this application</li>
             </ul>
             <Button size="sm" onClick={retryConnection} className="w-fit">
@@ -220,22 +220,15 @@ export default function Workout() {
                   {/* Webcam feed from Flask backend */}
                   {isTracking && backendAvailable ? (
                     <img 
-                    src={`${backendConfig.endpoints.videoFeed}?t=${new Date().getTime()}`} 
-                    alt="Webcam Feed" 
-                    className="h-full w-full object-cover" 
-                    onError={(e) => {
-                      console.error("Error loading webcam feed");
-                      // Try again once before giving up
-                      const target = e.target as HTMLImageElement;
-                      if (!target.dataset.retried) {
-                        target.dataset.retried = 'true';
-                        target.src = `${backendConfig.endpoints.videoFeed}?t=${new Date().getTime()}`;
-                      } else {
+                      src={`${backendConfig.endpoints.videoFeed}?t=${new Date().getTime()}`} 
+                      alt="Webcam Feed" 
+                      className="h-full w-full object-cover" 
+                      onError={(e) => {
+                        console.error("Error loading webcam feed");
                         setBackendAvailable(false);
                         setIsTracking(false);
-                      }
-                    }}
-                  />
+                      }}
+                    />
                   ) : (
                     <div className="flex items-center justify-center h-full w-full bg-gray-100">
                       {backendAvailable === false ? (
