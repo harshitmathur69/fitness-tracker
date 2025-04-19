@@ -1,4 +1,3 @@
-
 // Configuration for backend API
 // Adjust this URL based on where your Flask app is running
 
@@ -10,7 +9,9 @@ export const backendConfig = {
   baseUrl: BASE_URL,
   endpoints: {
     videoFeed: `${BASE_URL}/video_feed`,
-    workoutData: `${BASE_URL}/workout_data`
+    workoutData: `${BASE_URL}/workout_data`,
+    squatData: `${BASE_URL}/squat_data/squat_data`,
+    squatVideoFeed: `${BASE_URL}/squat_data/squat_video_feed`
   },
   // Helper function to check if backend is reachable
   isBackendAvailable: async (): Promise<boolean> => {
@@ -32,7 +33,21 @@ export const backendConfig = {
   }
 };
 
-// Helper function to handle fetch errors
+// Helper function to fetch data from an endpoint
+export const fetchData = async (endpoint: string): Promise<any> => {
+  try {
+    const response = await fetch(endpoint);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch data from ${endpoint}: ${response.statusText}`);
+    }
+    return await response.json();
+  } catch (error) {
+    console.error("Error fetching data:", error);
+    throw error;
+  }
+};
+
+// Helper function to handle fetch errors with a timeout
 export const fetchWithTimeout = (url: string, options: RequestInit = {}, timeout = 8000): Promise<Response> => {
   return new Promise((resolve, reject) => {
     // Set timeout to abort fetch if it takes too long

@@ -16,7 +16,7 @@ def calculate_angle(a, b, c):
         angle = 360 - angle
     return angle
 
-def smooth_angle(prev_angle, new_angle, alpha=0.6):
+def smooth_angle(prev_angle, new_angle, alpha=0.7):
     if prev_angle is None:
         return new_angle
     return alpha * new_angle + (1 - alpha) * prev_angle
