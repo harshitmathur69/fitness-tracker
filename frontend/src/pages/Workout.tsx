@@ -220,15 +220,22 @@ export default function Workout() {
                   {/* Webcam feed from Flask backend */}
                   {isTracking && backendAvailable ? (
                     <img 
-                      src={`${backendConfig.endpoints.videoFeed}?t=${new Date().getTime()}`} 
-                      alt="Webcam Feed" 
-                      className="h-full w-full object-cover" 
-                      onError={(e) => {
-                        console.error("Error loading webcam feed");
+                    src={`${backendConfig.endpoints.videoFeed}?t=${new Date().getTime()}`} 
+                    alt="Webcam Feed" 
+                    className="h-full w-full object-cover" 
+                    onError={(e) => {
+                      console.error("Error loading webcam feed");
+                      // Try again once before giving up
+                      const target = e.target as HTMLImageElement;
+                      if (!target.dataset.retried) {
+                        target.dataset.retried = 'true';
+                        target.src = `${backendConfig.endpoints.videoFeed}?t=${new Date().getTime()}`;
+                      } else {
                         setBackendAvailable(false);
                         setIsTracking(false);
-                      }}
-                    />
+                      }
+                    }}
+                  />
                   ) : (
                     <div className="flex items-center justify-center h-full w-full bg-gray-100">
                       {backendAvailable === false ? (
