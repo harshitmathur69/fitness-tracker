@@ -1,8 +1,13 @@
 from flask import Flask, render_template
 from flask_cors import CORS
+from dotenv import load_dotenv
 from routes.video_feed import video_feed_bp
 from routes.workout_data import workout_data_bp
 from routes.squat_data import squat_data_bp
+from routes.fitness_recommendations import fitness_recommendations_bp
+
+# Load environment variables
+load_dotenv()
 
 # Initialize Flask app and set the template folder
 app = Flask(__name__, template_folder='../frontend', static_folder='../frontend/static')
@@ -19,6 +24,7 @@ CORS(app, resources={r"/*": {
 app.register_blueprint(video_feed_bp, url_prefix='/video_feed')
 app.register_blueprint(workout_data_bp, url_prefix='/workout_data')
 app.register_blueprint(squat_data_bp, url_prefix='/squat_data')
+app.register_blueprint(fitness_recommendations_bp, url_prefix='/fitness')
 
 @app.route('/')
 def index():
@@ -32,5 +38,3 @@ def options_handler(path):
 
 if __name__ == '__main__':
     app.run(debug=True)
-
-    
