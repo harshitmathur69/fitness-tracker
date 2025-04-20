@@ -1,10 +1,9 @@
-
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Layout from "@/components/Layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { AlertCircle, Check, TrendingUp, Play, Utensils } from "lucide-react";
+import { AlertCircle, Play, TrendingUp } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Line } from "react-chartjs-2";
 import {
@@ -20,6 +19,7 @@ import {
   ChartOptions,
   ChartData
 } from "chart.js";
+import { backendConfig } from "@/utils/backendConfig";
 
 // Register Chart.js components
 ChartJS.register(
@@ -33,22 +33,14 @@ ChartJS.register(
   Legend
 );
 
-// Mock workout data
-const recentWorkouts = [
-  { id: 1, date: "Today", exercise: "Bicep Curls", reps: 45, duration: "12 mins", formScore: 92 },
-  { id: 2, date: "Yesterday", exercise: "Push-ups", reps: 30, duration: "15 mins", formScore: 88 },
-  { id: 3, date: "2 days ago", exercise: "Squats", reps: 25, duration: "20 mins", formScore: 90 },
-  { id: 4, date: "3 days ago", exercise: "Lunges", reps: 40, duration: "18 mins", formScore: 85 },
-];
-
-// Mock form checking data
+// Static form checking data
 const formCheckItems = [
   { id: 1, exercise: "Bicep Curls", issue: "Elbow position too far forward", severity: "medium", tip: "Keep elbows close to your torso" },
   { id: 2, exercise: "Squats", issue: "Knees extending past toes", severity: "high", tip: "Push hips back and keep weight on heels" },
   { id: 3, exercise: "Push-ups", issue: "Back arching", severity: "medium", tip: "Engage core and maintain straight line from head to heels" }
 ];
 
-// Mock diet suggestions
+// Static meal suggestions
 const mealSuggestions = [
   { id: 1, meal: "Breakfast", suggestion: "Greek yogurt with berries and nuts", calories: 320, protein: 22 },
   { id: 2, meal: "Lunch", suggestion: "Grilled chicken salad with olive oil dressing", calories: 450, protein: 35 },
@@ -57,7 +49,55 @@ const mealSuggestions = [
 ];
 
 export default function Dashboard() {
-  // Line chart options and data
+  // Live workout data from backend
+  const [workoutData, setWorkoutData] = useState({
+    left_counter: 0,
+    right_counter: 0,
+    squat_counter: 0,
+    left_stage: null as string | null,
+    right_stage: null as string | null,
+    squat_stage: null as string | null
+  });
+
+  // For backend connectivity status
+  const [backendAvailable, setBackendAvailable] = useState<boolean | null>(null);
+
+  // Fetch backend availability on mount
+  useEffect(() => {
+    const checkBackend = async () => {
+      try {
+        const available = await backendConfig.isBackendAvailable();
+        setBackendAvailable(available);
+      } catch {
+        setBackendAvailable(false);
+      }
+    };
+    checkBackend();
+  }, []);
+
+  // Poll workout data every second if backend is available
+  useEffect(() => {
+    if (backendAvailable) {
+      const interval = setInterval(async () => {
+        try {
+          const response = await fetch(backendConfig.endpoints.workoutData);
+          const data = await response.json();
+          setWorkoutData(data);
+        } catch (error) {
+          // Optionally handle error
+        }
+      }, 1000);
+      return () => clearInterval(interval);
+    }
+  }, [backendAvailable]);
+
+  // Live recent workouts (current session)
+  const recentWorkouts = [
+    { id: 1, date: "Today", exercise: "Bicep Curls", reps: workoutData.left_counter + workoutData.right_counter, duration: "Live", formScore: 92 },
+    { id: 2, date: "Today", exercise: "Squats", reps: workoutData.squat_counter, duration: "Live", formScore: 90 }
+  ];
+
+  // Progress chart data (current session only)
   const lineOptions: ChartOptions<"line"> = {
     responsive: true,
     plugins: {
@@ -73,29 +113,41 @@ export default function Dashboard() {
       },
     },
     scales: {
-      x: {
-        grid: {
-          display: false,
-        },
-      },
-      y: {
-        beginAtZero: true,
-      },
+      x: { grid: { display: false } },
+      y: { beginAtZero: true },
     },
   };
 
   const progressData: ChartData<"line"> = {
-    labels: ["Week 1", "Week 2", "Week 3", "Week 4"],
+    labels: ["Bicep Curls", "Squats"],
     datasets: [
       {
-        label: "Reps per Workout",
-        data: [30, 35, 39, 45],
+        label: "Reps (Current Session)",
+        data: [workoutData.left_counter + workoutData.right_counter, workoutData.squat_counter],
         borderColor: "#9b87f5",
         backgroundColor: "rgba(155, 135, 245, 0.2)",
         tension: 0.3,
       },
     ],
   };
+
+  // Show backend error if not available
+  if (backendAvailable === false) {
+    return (
+      <Layout>
+        <div className="container py-10">
+          <div className="flex flex-col items-center justify-center min-h-screen">
+            <h2 className="text-2xl font-bold text-red-500 mb-4">
+              Backend Server Unavailable
+            </h2>
+            <p className="text-muted-foreground">
+              Please make sure the Flask server is running on port 5000.
+            </p>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
 
   return (
     <Layout>
@@ -180,7 +232,7 @@ export default function Dashboard() {
                               <th className="py-3 px-4 text-left">Date</th>
                               <th className="py-3 px-4 text-left">Exercise</th>
                               <th className="py-3 px-4 text-right">Reps</th>
-                              <th className="py-3 px-4 text-right">Duration</th>
+                              <th className="py-3 px-4 text-right">Form Score</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -189,7 +241,7 @@ export default function Dashboard() {
                                 <td className="py-3 px-4">{workout.date}</td>
                                 <td className="py-3 px-4">{workout.exercise}</td>
                                 <td className="py-3 px-4 text-right">{workout.reps}</td>
-                                <td className="py-3 px-4 text-right">{workout.duration}</td>
+                                <td className="py-3 px-4 text-right">{workout.formScore}</td>
                               </tr>
                             ))}
                           </tbody>
