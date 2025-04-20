@@ -67,7 +67,7 @@ export default function Workout() {
             setWorkoutData(data);
             
             // Check if goal is reached (using sum of left and right counters)
-            const totalReps = data.left_counter + data.right_counter;
+            const totalReps = data.left_counter && data.right_counter;
             if (totalReps >= goal && !showCompletionAlert) {
               setShowCompletionAlert(true);
               setIsTracking(false);
