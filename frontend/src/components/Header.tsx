@@ -50,11 +50,6 @@ export default function Header() {
               Log out
             </Button>
           </Link>
-          <Link to="/settings">
-            <Button variant="ghost" size="icon">
-              <Settings className="h-4 w-4" />
-            </Button>
-          </Link>
         </div>
       </div>
     </header>
