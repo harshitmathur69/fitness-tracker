@@ -32,6 +32,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/components/ui/use-toast";
 import { backendConfig } from "@/utils/backendConfig";
+import { marked } from "marked";
 
 // Register Chart.js components
 ChartJS.register(
@@ -576,7 +577,10 @@ export default function Dashboard() {
                                       key={item.id}
                                       className="border-l-4 border-gym-purple pl-4 py-2"
                                     >
-                                      <p className="text-sm">{item.content}</p>
+                                      <p
+                                        className="text-sm"
+                                        dangerouslySetInnerHTML={{ __html: marked(item.content) }}
+                                      ></p>
                                     </div>
                                   ))
                                 )}

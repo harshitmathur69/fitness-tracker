@@ -9,9 +9,9 @@ export default function Landing() {
         <div className="container px-4 md:px-6">
           <div className="grid gap-6 lg:grid-cols-2 lg:gap-12 items-center">
             <div className="flex flex-col justify-center space-y-4 animate-fade-in">
-              <div className="inline-block px-3 py-1 rounded-full bg-gym-purple/10 text-gym-purple font-medium text-sm mb-2">
+                <div className="inline-block px-3 py-1 rounded-full bg-gym-purple/10 text-gym-purple font-medium text-sm mb-2 w-fit">
                 Introducing AI Gym Tracker
-              </div>
+                </div>
               <h1 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl lg:text-6xl">
                 Count Your Curls with <span className="text-gym-purple">AI Precision</span>
               </h1>
