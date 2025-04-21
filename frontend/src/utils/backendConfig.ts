@@ -14,13 +14,24 @@ export interface WorkoutData {
 // Default URL for local development
 const BASE_URL = "http://localhost:5000";
 
-// Export configuration for use throughout the app
+// REST API endpoints following best practices
 export const backendConfig = {
   baseUrl: BASE_URL,
   endpoints: {
+    // Existing endpoints
     videoFeed: `${BASE_URL}/video_feed`,
-    workoutData: `${BASE_URL}/workout_data`
+    workoutData: `${BASE_URL}/workout_data`,
+    reset: `${BASE_URL}/reset`,
+    
+    // New endpoints following REST noun convention
+    dietSuggestions: `${BASE_URL}/diet_suggestion`,
+    formScores: `${BASE_URL}/form_score`,
+    formFeedback: `${BASE_URL}/form_feedback`,
+    
+    // Mode configuration endpoint
+    workoutMode: `${BASE_URL}/workout_mode`
   },
+  
   // Helper function to check if backend is reachable
   isBackendAvailable: async (): Promise<boolean> => {
     try {
@@ -39,25 +50,30 @@ export const backendConfig = {
       return false;
     }
   },
-  // Function to fetch workout data from backend
-  fetchWorkoutData: async (): Promise<WorkoutData> => {
+  
+  // Enhanced fetch with timeout and error handling
+  fetchData: async <T>(endpoint: string, options: RequestInit = {}): Promise<T> => {
     try {
-      const response = await fetchWithTimeout(`${BASE_URL}/workout_data`);
+      const response = await fetchWithTimeout(
+        `${BASE_URL}${endpoint}`,
+        options
+      );
+      
       if (!response.ok) {
-        throw new Error(`Failed to fetch workout data: ${response.status}`);
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
+      
       return await response.json();
     } catch (error) {
-      console.error("Error fetching workout data:", error);
+      console.error(`Error fetching ${endpoint}:`, error);
       throw error;
     }
   }
 };
 
-// Helper function to handle fetch errors
+// Helper function to handle fetch errors with timeout
 export const fetchWithTimeout = (url: string, options: RequestInit = {}, timeout = 8000): Promise<Response> => {
   return new Promise((resolve, reject) => {
-    // Set timeout to abort fetch if it takes too long
     const controller = new AbortController();
     const timeoutId = setTimeout(() => {
       controller.abort();

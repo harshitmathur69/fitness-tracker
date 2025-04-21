@@ -1,8 +1,15 @@
+import datetime
 from flask import Flask, Response, jsonify, request
 from flask_cors import CORS
 import cv2
 import mediapipe as mp
 import numpy as np
+import os
+from groq import Groq
+from dotenv import load_dotenv
+
+load_dotenv()
+client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 
 app = Flask(__name__)
 CORS(app)
@@ -16,6 +23,8 @@ left_stage = right_stage = squat_stage = None
 left_counted = right_counted = squat_counted = False
 left_angle_smoothed = right_angle_smoothed = None
 left_knee_smoothed = right_knee_smoothed = None
+workouts = []
+
 
 @app.route('/set_mode', methods=['POST'])
 def set_mode():
@@ -109,9 +118,11 @@ def generate_frames():
             yield (b'--frame\r\n'
                    b'Content-Type: image/jpeg\r\n\r\n' + frame_bytes + b'\r\n')
 
+
 @app.route('/video_feed')
 def video_feed():
     return Response(generate_frames(), mimetype='multipart/x-mixed-replace; boundary=frame')
+
 
 @app.route('/workout_data')
 def workout_data():
@@ -123,6 +134,111 @@ def workout_data():
         'squat_counter': squat_counter,
         'squat_stage': squat_stage
     })
+
+
+@app.route('/diet_suggestion', methods=['POST'])
+def diet_suggestion():
+    """Get AI-powered diet suggestions using Groq"""
+    try:
+        data = request.get_json()
+        
+        # Validate required fields from frontend form
+        required_fields = ['age', 'weight', 'height', 'goal', 'preferences']
+        for field in required_fields:
+            if field not in data:
+                return jsonify(success=False, error=f"Missing required field: {field}"), 400
+
+        prompt = f"""
+        As a professional nutritionist, create a personalized diet plan based on:
+        - Age: {data['age']}
+        - Weight: {data['weight']}kg
+        - Height: {data['height']}cm
+        - Fitness Goal: {data['goal']}
+        - Dietary Preferences: {data['preferences']}
+        
+        Provide specific meal suggestions with portion sizes and timing.
+        """
+        
+        chat_completion = client.chat.completions.create(
+            messages=[{"role": "user", "content": prompt}],
+            model="llama-3.3-70b-versatile",
+            temperature=0.5
+        )
+        
+        return jsonify({
+            "success": True,
+            "suggestion": chat_completion.choices[0].message.content
+        })
+    
+    except Exception as e:
+        app.logger.error(f"Diet suggestion error: {str(e)}")  # Add logging
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route('/form_score', methods=['POST'])
+def form_score():
+    """Calculate and store form score with workout data"""
+    try:
+        data = request.get_json()
+        
+        # Simple form scoring logic (you can enhance this)
+        score = 100 - abs(data['target_angle'] - data['actual_angle'])
+        
+        workout_data = {
+            "date": datetime.now().isoformat(),
+            "exercise": data['exercise'],
+            "reps": data['reps'],
+            "score": max(0, min(100, score)),
+            "angles": data.get('angles', []),
+            "joint_data": data.get('joint_data', {})
+        }
+        
+        workouts.append(workout_data)
+        
+        return jsonify({
+            "success": True,
+            "score": workout_data['score'],
+            "workout": workout_data
+        })
+    
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 400
+
+
+@app.route('/form_feedback', methods=['GET'])
+def form_feedback():
+    """Get AI-generated form feedback using workout data"""
+    try:
+        if not workouts:
+            return jsonify({"success": False, "error": "No workout data"}), 404
+            
+        latest = workouts[-1]
+        
+        prompt = f"""
+        As a professional fitness trainer, analyze this workout data:
+        - Exercise: {latest['exercise']}
+        - Form Score: {latest['score']}/100
+        - Key Angles: {latest['angles']}
+        - Repetitions: {latest['reps']}
+        
+        Provide specific feedback on form improvements and injury prevention tips.
+        Highlight 2-3 key areas for improvement with practical exercises.
+        """
+        
+        chat_completion = client.chat.completions.create(
+            messages=[{"role": "user", "content": prompt}],
+            model="mixtral-8x7b-32768",
+            temperature=0.3
+        )
+        
+        return jsonify({
+            "success": True,
+            "feedback": chat_completion.choices[0].message.content,
+            "workout": latest
+        })
+    
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
 
 @app.route('/reset', methods=['POST'])
 def reset_counters():
