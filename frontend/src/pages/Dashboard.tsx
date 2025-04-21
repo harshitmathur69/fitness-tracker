@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react";
 import Layout from "@/components/Layout";
+import { motion, AnimatePresence } from "framer-motion";
+import { useInView } from "react-intersection-observer";
 import {
   Card,
   CardContent,
@@ -45,6 +47,12 @@ ChartJS.register(
   Tooltip,
   Legend
 );
+
+const tabVariants = {
+  hidden: { opacity: 0, x: -20 },
+  visible: { opacity: 1, x: 0 },
+  exit: { opacity: 0, x: 20 }
+};
 
 // Static form checking data
 const formCheckItems = [
@@ -309,234 +317,211 @@ export default function Dashboard() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <Tabs defaultValue="form" className="space-y-4">
-                <TabsList className="grid grid-cols-3 w-full max-w-md">
-                  <TabsTrigger value="form">Form Checking</TabsTrigger>
-                  <TabsTrigger value="workout">Workout Tracking</TabsTrigger>
-                  <TabsTrigger value="diet">Diet Suggestions</TabsTrigger>
-                </TabsList>
+            <Tabs defaultValue="form" className="space-y-4">
+              <TabsList className="grid grid-cols-3 w-full max-w-md">
+                <TabsTrigger value="form">Form Checking</TabsTrigger>
+                <TabsTrigger value="workout">Workout Tracking</TabsTrigger>
+                <TabsTrigger value="diet">Diet Suggestions</TabsTrigger>
+              </TabsList>
+
 
                 {/* Form Checking Tab */}
                 <TabsContent value="form" className="space-y-4">
-                  <div className="grid gap-4">
-                    {formCheckItems.map((item) => (
-                      <Card key={item.id}>
-                        <CardContent className="p-4">
-                          <div className="flex items-start gap-4">
-                            <div
-                              className={`mt-1 p-1.5 rounded-full ${
-                                item.severity === "high"
-                                  ? "bg-red-100 text-red-600"
-                                  : item.severity === "medium"
-                                  ? "bg-amber-100 text-amber-600"
-                                  : "bg-green-100 text-green-600"
-                              }`}
-                            >
-                              <AlertCircle className="h-4 w-4" />
-                            </div>
-                            <div className="flex-1">
-                              <div className="flex justify-between items-start">
-                                <h4 className="font-semibold">
-                                  {item.exercise}
-                                </h4>
-                                <span
-                                  className={`text-xs font-medium px-2 py-1 rounded-full ${
-                                    item.severity === "high"
-                                      ? "bg-red-100 text-red-600"
-                                      : item.severity === "medium"
-                                      ? "bg-amber-100 text-amber-600"
-                                      : "bg-green-100 text-green-600"
-                                  }`}
-                                >
-                                  {item.severity.charAt(0).toUpperCase() +
-                                    item.severity.slice(1)}
-                                </span>
+                  <motion.div
+                    key="form"
+                    initial="hidden"
+                    animate="visible"
+                    exit="exit"
+                    variants={tabVariants}
+                    transition={{ duration: 0.2 }}
+                  >
+                    <div className="grid gap-4">
+                      {formCheckItems.map((item) => (
+                        <Card key={item.id}>
+                          <CardContent className="p-4">
+                            <div className="flex items-start gap-4">
+                              <div
+                                className={`mt-1 p-1.5 rounded-full ${
+                                  item.severity === "high"
+                                    ? "bg-red-100 text-red-600"
+                                    : item.severity === "medium"
+                                    ? "bg-amber-100 text-amber-600"
+                                    : "bg-green-100 text-green-600"
+                                }`}
+                              >
+                                <AlertCircle className="h-4 w-4" />
                               </div>
-                              <p className="text-sm text-muted-foreground mt-1">
-                                {item.issue}
-                              </p>
-                              <div className="mt-2 bg-muted p-2 rounded-md">
-                                <p className="text-sm">
-                                  <span className="font-semibold">Tip:</span>{" "}
-                                  {item.tip}
+                              <div className="flex-1">
+                                <div className="flex justify-between items-start">
+                                  <h4 className="font-semibold">{item.exercise}</h4>
+                                  <span
+                                    className={`text-xs font-medium px-2 py-1 rounded-full ${
+                                      item.severity === "high"
+                                        ? "bg-red-100 text-red-600"
+                                        : item.severity === "medium"
+                                        ? "bg-amber-100 text-amber-600"
+                                        : "bg-green-100 text-green-600"
+                                    }`}
+                                  >
+                                    {item.severity.charAt(0).toUpperCase() +
+                                      item.severity.slice(1)}
+                                  </span>
+                                </div>
+                                <p className="text-sm text-muted-foreground mt-1">
+                                  {item.issue}
                                 </p>
+                                <div className="mt-2 bg-muted p-2 rounded-md">
+                                  <p className="text-sm">
+                                    <span className="font-semibold">Tip:</span> {item.tip}
+                                  </p>
+                                </div>
                               </div>
                             </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  </motion.div>
                 </TabsContent>
 
                 {/* Workout Tracking Tab */}
                 <TabsContent value="workout" className="space-y-4">
+                  <motion.div
+                  key="workout"
+                  initial="hidden"
+                  animate="visible"
+                  exit="exit"
+                  variants={tabVariants}
+                  transition={{ duration: 0.2 }}
+                  >
                   <div className="grid gap-4 md:grid-cols-2">
-                    <div className="space-y-4">
-                      <h3 className="text-lg font-semibold">
-                        Session Analytics
-                      </h3>
+                    {/* Session Analytics */}
+                    <div className="space-y-4"></div>
+                    <h3 className="text-lg font-semibold">Session Analytics</h3>
 
-                      <Card>
-                        <CardContent className="p-4">
-                          <div className="flex justify-between items-center">
-                            <div>
-                              <p className="text-sm text-muted-foreground">
-                                Current Session Score
-                              </p>
-                              <p className="text-2xl font-bold">92/100</p>
-                            </div>
-                            <Button
-                              variant="outline"
-                              onClick={async () => {
-                                try {
-                                  await fetch(
-                                    backendConfig.endpoints.formScores,
-                                    {
-                                      method: "POST",
-                                      headers: {
-                                        "Content-Type": "application/json",
-                                      },
-                                      body: JSON.stringify({
-                                        exercise: "bicep_curl",
-                                        reps:
-                                          workoutData.left_counter +
-                                          workoutData.right_counter,
-                                        target_angle: 90,
-                                        actual_angle: 85,
-                                      }),
-                                    }
-                                  );
-                                  toast({
-                                    title: "Session saved successfully",
-                                  });
-                                } catch (error) {
-                                  toast({
-                                    variant: "destructive",
-                                    title: "Failed to save session",
-                                  });
-                                }
-                              }}
-                            >
-                              Save Session
-                            </Button>
-                          </div>
-                        </CardContent>
-                      </Card>
+                    <Card>
+                      <CardContent className="p-4">
+                      <div className="flex justify-between items-center">
+                        <div>
+                        <p className="text-sm text-muted-foreground">
+                          Current Session Score
+                        </p>
+                        <p className="text-2xl font-bold">92/100</p>
+                        </div>
+                        <Button
+                        variant="outline"
+                        onClick={async () => {
+                          try {
+                          await fetch(backendConfig.endpoints.formScores, {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({
+                            exercise: "bicep_curl",
+                            reps: workoutData.left_counter + workoutData.right_counter,
+                            target_angle: 90,
+                            actual_angle: 85,
+                            }),
+                          });
+                          toast({ title: "Session saved successfully" });
+                          } catch (error) {
+                          toast({
+                            variant: "destructive",
+                            title: "Failed to save session",
+                          });
+                          }
+                        }}
+                        >
+                        Save Session
+                        </Button>
+                      </div>
+                      </CardContent>
+                    </Card>
 
-                      <Card>
-                        <CardContent className="p-4">
-                          <h3 className="text-lg font-semibold mb-3">
-                            Recent Workouts
-                          </h3>
-                          <div className="overflow-x-auto">
-                            <table className="w-full text-sm">
-                              <thead>
-                                <tr className="border-b">
-                                  <th className="py-3 px-4 text-left">Date</th>
-                                  <th className="py-3 px-4 text-left">
-                                    Exercise
-                                  </th>
-                                  <th className="py-3 px-4 text-right">Reps</th>
-                                  <th className="py-3 px-4 text-right">
-                                    Form Score
-                                  </th>
+                    <Card>
+                      <CardContent className="p-4">
+                        <h3 className="text-lg font-semibold mb-3">Recent Workouts</h3>
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-sm">
+                            <thead>
+                              <tr className="border-b">
+                                <th className="py-3 px-4 text-left">Date</th>
+                                <th className="py-3 px-4 text-left">Exercise</th>
+                                <th className="py-3 px-4 text-right">Reps</th>
+                                <th className="py-3 px-4 text-right">Form Score</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {recentWorkouts.map((workout) => (
+                                <tr key={workout.id} className="border-b hover:bg-muted/50">
+                                  <td className="py-3 px-4">{workout.date}</td>
+                                  <td className="py-3 px-4">{workout.exercise}</td>
+                                  <td className="py-3 px-4 text-right">{workout.reps}</td>
+                                  <td className="py-3 px-4 text-right">{workout.formScore}</td>
                                 </tr>
-                              </thead>
-                              <tbody>
-                                {recentWorkouts.map((workout) => (
-                                  <tr
-                                    key={workout.id}
-                                    className="border-b hover:bg-muted/50"
-                                  >
-                                    <td className="py-3 px-4">
-                                      {workout.date}
-                                    </td>
-                                    <td className="py-3 px-4">
-                                      {workout.exercise}
-                                    </td>
-                                    <td className="py-3 px-4 text-right">
-                                      {workout.reps}
-                                    </td>
-                                    <td className="py-3 px-4 text-right">
-                                      {workout.formScore}
-                                    </td>
-                                  </tr>
-                                ))}
-                              </tbody>
-                            </table>
-                          </div>
-                        </CardContent>
-                      </Card>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </CardContent>
+                    </Card>
                     </div>
 
-                    <div className="space-y-4">
-                      <h3 className="text-lg font-semibold">
-                        Performance Insights
-                      </h3>
+                    {/* Performance Insights */}
+                    <div className="space-y-4"></div>
+                    <h3 className="text-lg font-semibold">Performance Insights</h3>
 
-                      <Card>
-                        <CardContent className="p-4 h-[300px]">
-                          <Line options={lineOptions} data={progressData} />
-                        </CardContent>
-                      </Card>
+                    <Card>
+                      <CardContent className="p-4 h-[300px]">
+                      <Line options={lineOptions} data={progressData} />
+                      </CardContent>
+                    </Card>
 
-                      <Card>
-                        <CardContent className="p-4">
-                          <div className="flex justify-between items-center mb-4">
-                            <h3 className="text-lg font-semibold">
-                              Form Feedback
-                            </h3>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={async () => {
-                                setIsLoadingFeedback(true);
-                                try {
-                                  const response = await fetch(
-                                    backendConfig.endpoints.formFeedback
-                                  );
-                                  const data = await response.json();
-                                  setFormFeedback(
-                                    data.feedback
-                                      .split("\n")
-                                      .map((item: string, index: number) => ({
-                                        id: index,
-                                        content: item,
-                                      }))
-                                  );
-                                } catch (error) {
-                                  toast({
-                                    variant: "destructive",
-                                    title: "Failed to load feedback",
-                                  });
-                                }
-                                setIsLoadingFeedback(false);
-                              }}
-                            >
-                              {isLoadingFeedback
-                                ? "Refreshing..."
-                                : "Refresh Feedback"}
-                            </Button>
-                          </div>
-
-                          <div className="space-y-4">
-                            {formFeedback.map((item) => (
-                              <div
-                                key={item.id}
-                                className="flex items-start gap-4"
-                              >
-                                <div className="mt-1 p-1.5 rounded-full bg-gym-purple text-white">
-                                  <TrendingUp className="h-4 w-4" />
-                                </div>
-                                <p className="text-sm">{item.content}</p>
+                    <Card>
+                      <CardContent className="p-4">
+                      <div className="flex justify-between items-center mb-4"></div>
+                        <h3 className="text-lg font-semibold">Form Feedback</h3>
+                        <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={async () => {
+                          setIsLoadingFeedback(true);
+                          try {
+                          const response = await fetch(
+                            backendConfig.endpoints.formFeedback
+                          );
+                          const data = await response.json();
+                          setFormFeedback(
+                            data.feedback
+                            .split("\n")
+                            .map((item: string, index: number) => ({
+                              id: index,
+                              content: item,
+                            }))
+                          );
+                          } catch (error) {
+                          toast({
+                            variant: "destructive",
+                            title: "Failed to load feedback",
+                          });
+                          }
+                          setIsLoadingFeedback(false);
+                        }}
+                        >
+                        {isLoadingFeedback ? "Refreshing..." : "Refresh Feedback"}
+                        </Button>
+                        <div className="space-y-4">
+                          {formFeedback.map((item) => (
+                            <div key={item.id} className="flex items-start gap-4">
+                              <div className="mt-1 p-1.5 rounded-full bg-gym-purple text-white">
+                                <TrendingUp className="h-4 w-4" />
                               </div>
-                            ))}
-                          </div>
-                        </CardContent>
-                      </Card>
-                    </div>
-                  </div>
+                              <p className="text-sm">{item.content}</p>
+                            </div>
+                          ))}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </motion.div>
                 </TabsContent>
 
                 {/* Diet Suggestions Tab */}
