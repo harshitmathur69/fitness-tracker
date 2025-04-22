@@ -37,7 +37,7 @@ export default function Landing() {
     <Layout>
       {/* SCROLL SNAP WRAPPER */}
       <div
-        className="h-screen overflow-y-scroll scroll-smooth snap-y snap-mandatory"
+        className="h-screen overflow-y-scroll scroll-smooth snap-y snap-mandatory scrollbar-hide"
         style={{ scrollBehavior: "smooth" }}
       >
         {/* Hero Section */}
