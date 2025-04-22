@@ -12,24 +12,22 @@ export interface WorkoutData {
 }
 
 // Default URL for local development
-const BASE_URL = "http://localhost:5000";
+const BASE_URL = "http://127.0.0.1:5000";
 
 // REST API endpoints following best practices
 export const backendConfig = {
   baseUrl: BASE_URL,
   endpoints: {
-    // Existing endpoints
     videoFeed: `${BASE_URL}/video_feed`,
     workoutData: `${BASE_URL}/workout_data`,
     reset: `${BASE_URL}/reset`,
-    
-    // New endpoints following REST noun convention
     dietSuggestions: `${BASE_URL}/diet_suggestion`,
-    formScores: `${BASE_URL}/form_score`,
+    dietAnalysis: `${BASE_URL}/diet_analysis`,
     formFeedback: `${BASE_URL}/form_feedback`,
+    formScore: `${BASE_URL}/form_score`,
     
     // Mode configuration endpoint
-    workoutMode: `${BASE_URL}/workout_mode`
+    workoutMode: `${BASE_URL}/set_mode`,
   },
   
   // Helper function to check if backend is reachable

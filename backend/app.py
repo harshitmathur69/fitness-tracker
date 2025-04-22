@@ -7,6 +7,7 @@ import numpy as np
 import os
 from groq import Groq
 from dotenv import load_dotenv
+import json
 
 load_dotenv()
 client = Groq(api_key=os.getenv("GROQ_API_KEY"))
@@ -23,7 +24,9 @@ left_stage = right_stage = squat_stage = None
 left_counted = right_counted = squat_counted = False
 left_angle_smoothed = right_angle_smoothed = None
 left_knee_smoothed = right_knee_smoothed = None
-workouts = []
+exercise_data = {"bicep_curl": [], "squat": []}
+diet = []  
+feedback_list = []
 
 
 @app.route('/set_mode', methods=['POST'])
@@ -74,10 +77,18 @@ def generate_frames():
                     l_wrist = [lm[mp_pose.PoseLandmark.LEFT_WRIST.value].x, lm[mp_pose.PoseLandmark.LEFT_WRIST.value].y]
                     l_angle = calculate_angle(l_shoulder, l_elbow, l_wrist)
                     left_angle_smoothed = smooth_angle(left_angle_smoothed, l_angle)
+
                     if left_angle_smoothed > 160:
                         left_stage = "down"; left_counted = False
                     if left_angle_smoothed < 30 and left_stage == 'down' and not left_counted:
                         left_stage = "up"; left_counter += 1; left_counted = True
+                        
+                        exercise_data["bicep_curl"].append({
+                            "left_shoulder": l_shoulder,
+                            "left_elbow": l_elbow,
+                            "left_wrist": l_wrist,
+                            "left_angle": left_angle_smoothed
+                        })
 
                     # Right arm
                     r_shoulder = [lm[mp_pose.PoseLandmark.RIGHT_SHOULDER.value].x, lm[mp_pose.PoseLandmark.RIGHT_SHOULDER.value].y]
@@ -89,6 +100,13 @@ def generate_frames():
                         right_stage = "down"; right_counted = False
                     if right_angle_smoothed < 30 and right_stage == 'down' and not right_counted:
                         right_stage = "up"; right_counter += 1; right_counted = True
+
+                        exercise_data["bicep_curl"].append({
+                            "right_shoulder": r_shoulder,
+                            "right_elbow": r_elbow,
+                            "right_wrist": r_wrist,
+                            "right_angle": right_angle_smoothed
+                        })
 
                 elif current_mode == "squat":
                     # Left leg
@@ -104,11 +122,24 @@ def generate_frames():
                     ra = [lm[mp_pose.PoseLandmark.RIGHT_ANKLE.value].x, lm[mp_pose.PoseLandmark.RIGHT_ANKLE.value].y]
                     right_knee_angle = calculate_angle(rh, rk, ra)
                     right_knee_smoothed = smooth_angle(right_knee_smoothed, right_knee_angle)
-
+                    
                     if left_knee_smoothed > 160 and right_knee_smoothed > 160:
                         squat_stage = "up"; squat_counted = False
                     if left_knee_smoothed < 90 and right_knee_smoothed < 90 and squat_stage == 'up' and not squat_counted:
                         squat_stage = "down"; squat_counter += 1; squat_counted = True
+
+                        exercise_data["squat"].append({
+                            "left_hip": lh,
+                            "left_knee": lk,
+                            "left_ankle": la,
+                            "left_knee_angle": left_knee_smoothed,
+                            "right_hip": rh,
+                            "right_knee": rk,
+                            "right_ankle": ra,
+                            "right_knee_angle": right_knee_smoothed
+                        })
+                    
+
 
             except Exception:
                 pass
@@ -149,7 +180,7 @@ def diet_suggestion():
                 return jsonify(success=False, error=f"Missing required field: {field}"), 400
 
         prompt = f"""
-        As a professional nutritionist, create a personalized diet plan based on:
+        As a professional nutritionist, create a personalized diet plan for 1 week based on:
         - Age: {data['age']}
         - Weight: {data['weight']}kg
         - Height: {data['height']}cm
@@ -164,6 +195,14 @@ def diet_suggestion():
             model="llama-3.3-70b-versatile",
             temperature=0.5
         )
+
+        diet_entry = {
+            "timestamp": datetime.now().isoformat(),
+            "suggestion": chat_completion.choices[0].message.content,
+            "analysis": None
+        }
+
+        diet.append(diet_entry)
         
         return jsonify({
             "success": True,
@@ -175,76 +214,193 @@ def diet_suggestion():
         return jsonify({"success": False, "error": str(e)}), 500
 
 
-@app.route('/form_score', methods=['POST'])
-def form_score():
-    """Calculate and store form score with workout data"""
+@app.route('/diet_analysis', methods=['POST'])
+def diet_analysis():
     try:
         data = request.get_json()
         
-        # Simple form scoring logic (you can enhance this)
-        score = 100 - abs(data['target_angle'] - data['actual_angle'])
-        
-        workout_data = {
-            "date": datetime.now().isoformat(),
-            "exercise": data['exercise'],
-            "reps": data['reps'],
-            "score": max(0, min(100, score)),
-            "angles": data.get('angles', []),
-            "joint_data": data.get('joint_data', {})
-        }
-        
-        workouts.append(workout_data)
-        
-        return jsonify({
-            "success": True,
-            "score": workout_data['score'],
-            "workout": workout_data
-        })
-    
-    except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 400
+        if not diet:
+            return jsonify(success=False, error="No diet suggestions available"), 404
 
-
-@app.route('/form_feedback', methods=['GET'])
-def form_feedback():
-    """Get AI-generated form feedback using workout data"""
-    try:
-        if not workouts:
-            return jsonify({"success": False, "error": "No workout data"}), 404
-            
-        latest = workouts[-1]
+        # Get latest diet entry
+        latest_diet = diet[-1]
         
         prompt = f"""
-        As a professional fitness trainer, analyze this workout data:
-        - Exercise: {latest['exercise']}
-        - Form Score: {latest['score']}/100
-        - Key Angles: {latest['angles']}
-        - Repetitions: {latest['reps']}
-        
-        Provide specific feedback on form improvements and injury prevention tips.
-        Highlight 2-3 key areas for improvement with practical exercises.
+        Analyze this diet plan and calculate AVERAGE DAILY VALUES for:
+        - Total calories (number only)
+        - Proteins in grams (number only)
+        - Carbohydrates in grams (number only)
+        - Fats in grams (number only)
+
+        Return STRICT JSON format:
+        {{
+            "monday": {{"calories": 2000, "protein": 150, "carbs": 250, "fats": 70}},
+            "tuesday": {{"calories": 2100, "protein": 155, "carbs": 260, "fats": 75}},
+            "wednesday": {{"calories": 2050, "protein": 152.5, "carbs": 255, "fats": 72.5}}
+            "thursday": {{"calories": 2050, "protein": 152.5, "carbs": 255, "fats": 72.5}}
+            "friday": {{"calories": 2050, "protein": 152.5, "carbs": 255, "fats": 72.5}}
+            "saturday": {{"calories": 2050, "protein": 152.5, "carbs": 255, "fats": 72.5}}
+            "sunday": {{"calories": 2050, "protein": 152.5, "carbs": 255, "fats": 72.5}}
+        }}
+
+        Diet Plan:
+        {latest_diet['suggestion']}
         """
         
         chat_completion = client.chat.completions.create(
             messages=[{"role": "user", "content": prompt}],
-            model="mixtral-8x7b-32768",
-            temperature=0.3
+            model="llama-3.3-70b-versatile",
+            temperature=0.1,
+            response_format={"type": "json_object"}
         )
+        
+        analysis = json.loads(chat_completion.choices[0].message.content)
+        
+        # Update diet entry with analysis
+        latest_diet['analysis'] = analysis
         
         return jsonify({
             "success": True,
-            "feedback": chat_completion.choices[0].message.content,
-            "workout": latest
+            "analysis": analysis,
+            "diet_id": len(diet)-1
         })
     
+    except json.JSONDecodeError:
+        return jsonify({"success": False, "error": "Invalid JSON from AI"}), 500
+    except Exception as e:
+        app.logger.error(f"Diet analysis error: {str(e)}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route('/form_feedback', methods=['GET'])
+def form_feedback():
+    global exercise_data
+    global feedback_list
+    print("Exercise data:", exercise_data)  # Debugging line
+    workouts = exercise_data
+    current_id = 1
+
+    try:
+        if not workouts["bicep_curl"] and not workouts["squat"]:
+            return jsonify({"success": False, "error": "No workout data"}), 404
+
+        for exercise_name in ["bicep_curl", "squat"]:
+            if not workouts[exercise_name]:
+                continue
+
+            # 1. Get issue
+            issue_prompt = f"""Analyze this {exercise_name} form data extracted by body tracking using mediapipe and identify the single most important form issue:
+            {workouts[exercise_name]}
+            Return ONLY a one line issue."""
+            issue_response = client.chat.completions.create(
+                messages=[{"role": "user", "content": issue_prompt}],
+                model="llama-3.3-70b-versatile",
+                temperature=0.3
+            )
+            issue = issue_response.choices[0].message.content.strip()
+
+            # 2. Get tip
+            tip_prompt = f"""For the following {exercise_name} form issue, provide a single, actionable corrective tip:
+            Issue: "{issue}"
+            Return one liner tip."""
+            tip_response = client.chat.completions.create(
+                messages=[{"role": "user", "content": tip_prompt}],
+                model="llama-3.3-70b-versatile",
+                temperature=0.3
+            )
+            tip = tip_response.choices[0].message.content.strip()
+
+            # 3. Get severity
+            severity_prompt = f"""For the following {exercise_name} form issue, assign a severity (low, medium, or high):
+            Issue: "{issue}"
+            Return just one word: low, medium, or high."""
+            severity_response = client.chat.completions.create(
+                messages=[{"role": "user", "content": severity_prompt}],
+                model="llama-3.3-70b-versatile",
+                temperature=0.2
+            )
+            severity = severity_response.choices[0].message.content.strip().strip('"').lower()
+
+            # 4. Get score
+            score_prompt = f"""For the following {exercise_name} form issue, assign a numeric score (0-100) indicating overall form quality (higher is better):
+            Issue: "{issue}"
+            Return just a number like 85."""
+            score_response = client.chat.completions.create(
+                messages=[{"role": "user", "content": score_prompt}],
+                model="llama-3.3-70b-versatile",
+                temperature=0.2
+            )
+            try:
+                score = int(score_response.choices[0].message.content.strip().strip('"'))
+            except ValueError:
+                score = 0  # Default or log an error
+
+            feedback_list.append({
+                "id": current_id,
+                "exercise": exercise_name,
+                "issue": issue,
+                "severity": severity,
+                "tip": tip,
+                "score": score
+            })
+            current_id += 1
+
+            print(f"Feedback for {exercise_name}: {feedback_list[-1]}")
+
+        return jsonify({"success": True, "feedback": feedback_list})
+
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route('/form_score', methods=['GET'])
+def form_score():
+    global feedback_list
+    try:
+        # Initialize default structure even with empty data
+        scores_with_averages = {
+            "bicep_curl": {"scores": [], "average_score": 0},
+            "squat": {"scores": [], "average_score": 0}
+        }
+
+        if feedback_list:
+            exercise_scores = {}
+            for feedback in feedback_list:
+                exercise = feedback['exercise']
+                score = feedback['score']
+                if exercise not in exercise_scores:
+                    exercise_scores[exercise] = []
+                exercise_scores[exercise].append(score)
+
+            # Update structure with actual data
+            for exercise, scores in exercise_scores.items():
+                scores_with_averages[exercise] = {
+                    "scores": scores,
+                    "average_score": sum(scores)/len(scores) if scores else 0
+                }
+
+        return jsonify({
+            "success": True,
+            "scores": scores_with_averages
+        })
+
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "error": str(e),
+            "scores": {  # Fallback structure
+                "bicep_curl": {"scores": [], "average_score": 0},
+                "squat": {"scores": [], "average_score": 0}
+            }
+        }), 500
+
 
 @app.route('/reset', methods=['POST'])
 def reset_counters():
     global left_counter, right_counter, squat_counter
     left_counter = right_counter = squat_counter = 0
     return jsonify(success=True)
+
 
 if __name__ == '__main__':
     app.run(debug=True)

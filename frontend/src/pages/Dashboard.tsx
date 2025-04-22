@@ -51,7 +51,7 @@ ChartJS.register(
 const tabVariants = {
   hidden: { opacity: 0, x: -20 },
   visible: { opacity: 1, x: 0 },
-  exit: { opacity: 0, x: 20 }
+  exit: { opacity: 0, x: 20 },
 };
 
 // Static form checking data
@@ -109,7 +109,9 @@ export default function Dashboard() {
   const [workoutData, setWorkoutData] = useState({
     left_counter: 0,
     right_counter: 0,
-    squat_counter: 0,
+    squat_counter: 0, 
+    biscep_score: 0,
+    squat_score: 0,   
     left_stage: null as string | null,
     right_stage: null as string | null,
     squat_stage: null as string | null,
@@ -153,9 +155,32 @@ export default function Dashboard() {
     if (backendAvailable) {
       const interval = setInterval(async () => {
         try {
-          const response = await fetch(backendConfig.endpoints.workoutData);
-          const data = await response.json();
-          setWorkoutData(data);
+          // Fetch workout data
+          const response_reps = await fetch(
+            backendConfig.endpoints.workoutData
+          );
+          const data_reps = await response_reps.json();
+          setWorkoutData(data_reps);
+
+          // Fetch form scores
+          const response_scores = await fetch(
+            backendConfig.endpoints.formScore
+          );
+          const data_scores = await response_scores.json();
+
+          if (data_scores.success) {
+            const scores = data_scores.scores;
+            const bicepsData = scores["Bicep Curls"] || { average_score: 0 };
+            const squatData = scores["Squats"] || { average_score: 0 };
+
+            setWorkoutData((prev) => ({
+              ...prev,
+              biceps_score: bicepsData.average_score,
+              squat_score: squatData.average_score,
+              avg_score:
+                (bicepsData.average_score + squatData.average_score) / 2,
+            }));
+          }
         } catch (error) {
           // Optionally handle error
         }
@@ -163,20 +188,6 @@ export default function Dashboard() {
       return () => clearInterval(interval);
     }
   }, [backendAvailable]);
-
-  const parseNutritionData = (suggestion: string) => {
-    const caloriesMatch = suggestion.match(/Calories:\s*(\d+)/i);
-    const proteinMatch = suggestion.match(/Protein:\s*(\d+)g/i);
-    const carbsMatch = suggestion.match(/Carbohydrates:\s*(\d+)g/i);
-    const fatMatch = suggestion.match(/Fat:\s*(\d+)g/i);
-
-    return {
-      calories: caloriesMatch ? parseInt(caloriesMatch[1]) : 0,
-      protein: proteinMatch ? parseInt(proteinMatch[1]) : 0,
-      carbs: carbsMatch ? parseInt(carbsMatch[1]) : 0,
-      fat: fatMatch ? parseInt(fatMatch[1]) : 0,
-    };
-  };
 
   const handleDietSubmit = dietForm.handleSubmit(async (data) => {
     setIsLoadingDiet(true);
@@ -190,9 +201,6 @@ export default function Dashboard() {
       if (!response.ok) throw new Error("API Error");
 
       const result = await response.json();
-      const parsedNutrition = parseNutritionData(result.suggestion);
-
-      setNutritionData(parsedNutrition);
       setDietSuggestions(
         result.suggestion
           .split("\n")
@@ -212,6 +220,30 @@ export default function Dashboard() {
     }
     setIsLoadingDiet(false);
   });
+
+  const handleFormFeedbackRefresh = async () => {
+    setIsLoadingFeedback(true);
+    try {
+      const response = await fetch(backendConfig.endpoints.formFeedback, {
+        method: "GET",
+      });
+      const data = await response.json();
+      console.log(data)
+      if (data.error === "No workout data") {
+        setFormFeedback(null);
+      } else {
+        setFormFeedback(data.feedback);
+        console.log(formFeedback);
+      }
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Failed to fetch form feedback",
+        description: "Please check your connection and try again",
+      });
+    }
+    setIsLoadingFeedback(false);
+  };
 
   // Live recent workouts (current session)
   const recentWorkouts = [
@@ -316,14 +348,14 @@ export default function Dashboard() {
                 Track your workouts, form, and nutrition
               </CardDescription>
             </CardHeader>
-            <CardContent>
-            <Tabs defaultValue="form" className="space-y-4">
-              <TabsList className="grid grid-cols-3 w-full max-w-md">
-                <TabsTrigger value="form">Form Checking</TabsTrigger>
-                <TabsTrigger value="workout">Workout Tracking</TabsTrigger>
-                <TabsTrigger value="diet">Diet Suggestions</TabsTrigger>
-              </TabsList>
 
+            <CardContent>
+              <Tabs defaultValue="form" className="space-y-4">
+                <TabsList className="grid grid-cols-3 w-full max-w-md">
+                  <TabsTrigger value="form">Form Checking</TabsTrigger>
+                  <TabsTrigger value="workout">Workout Tracking</TabsTrigger>
+                  <TabsTrigger value="diet">Diet Suggestions</TabsTrigger>
+                </TabsList>
 
                 {/* Form Checking Tab */}
                 <TabsContent value="form" className="space-y-4">
@@ -335,52 +367,79 @@ export default function Dashboard() {
                     variants={tabVariants}
                     transition={{ duration: 0.2 }}
                   >
-                    <div className="grid gap-4">
-                      {formCheckItems.map((item) => (
-                        <Card key={item.id}>
-                          <CardContent className="p-4">
-                            <div className="flex items-start gap-4">
-                              <div
-                                className={`mt-1 p-1.5 rounded-full ${
+                    <Card>
+                      <CardHeader className="flex flex-row justify-between items-center">
+                        <div>
+                          <CardTitle>Form Checking</CardTitle>
+
+                          <CardDescription className="pt-2">
+                            Ensure proper form and technique during workouts
+                          </CardDescription>
+                        </div>
+                        <Button onClick={handleFormFeedbackRefresh}>Refresh</Button>
+                      </CardHeader>
+                      <CardContent className="p-4 space-y-4">
+                        <div className="grid gap-4">
+                            {formFeedback === null ? (
+                            <div className="text-center text-muted-foreground">
+                              No workout data to display.
+                            </div>
+                            ) : (
+                              formFeedback.map((item) => (
+                              <Card key={item.id}>
+                              <CardContent className="p-4">
+                                <div className="flex items-start gap-4">
+                                <div
+                                  className={`mt-1 p-1.5 rounded-full ${
                                   item.severity === "high"
                                     ? "bg-red-100 text-red-600"
                                     : item.severity === "medium"
                                     ? "bg-amber-100 text-amber-600"
                                     : "bg-green-100 text-green-600"
-                                }`}
-                              >
-                                <AlertCircle className="h-4 w-4" />
-                              </div>
-                              <div className="flex-1">
-                                <div className="flex justify-between items-start">
-                                  <h4 className="font-semibold">{item.exercise}</h4>
+                                  }`}
+                                >
+                                  <AlertCircle className="h-4 w-4" />
+                                </div>
+                                <div className="flex-1">
+                                  <div className="flex justify-between items-start">
+                                  <h4 className="font-semibold">
+                                    {item.exercise}
+                                  </h4>
                                   <span
                                     className={`text-xs font-medium px-2 py-1 rounded-full ${
-                                      item.severity === "high"
-                                        ? "bg-red-100 text-red-600"
-                                        : item.severity === "medium"
-                                        ? "bg-amber-100 text-amber-600"
-                                        : "bg-green-100 text-green-600"
+                                    item.severity === "high"
+                                      ? "bg-red-100 text-red-600"
+                                      : item.severity === "medium"
+                                      ? "bg-amber-100 text-amber-600"
+                                      : "bg-green-100 text-green-600"
                                     }`}
                                   >
-                                    {item.severity.charAt(0).toUpperCase() +
-                                      item.severity.slice(1)}
+                                    {item.severity
+                                    .charAt(0)
+                                    .toUpperCase() +
+                                    item.severity.slice(1)}
                                   </span>
-                                </div>
-                                <p className="text-sm text-muted-foreground mt-1">
+                                  </div>
+                                  <p className="text-sm text-muted-foreground mt-1">
                                   {item.issue}
-                                </p>
-                                <div className="mt-2 bg-muted p-2 rounded-md">
-                                  <p className="text-sm">
-                                    <span className="font-semibold">Tip:</span> {item.tip}
                                   </p>
+                                  <div className="mt-2 bg-muted p-2 rounded-md">
+                                  <p className="text-sm">
+                                    <span className="font-semibold">
+                                    Tip:
+                                    </span>{" "}
+                                    {item.tip}
+                                  </p>
+                                  </div>
                                 </div>
-                              </div>
-                            </div>
-                          </CardContent>
-                        </Card>
-                      ))}
-                    </div>
+                                </div>
+                              </CardContent>
+                              </Card>
+                            ))
+                            )}
+                        </div>
+                      </CardContent>
+                    </Card>
                   </motion.div>
                 </TabsContent>
 
@@ -394,11 +453,14 @@ export default function Dashboard() {
                   variants={tabVariants}
                   transition={{ duration: 0.2 }}
                   >
-                  <div className="grid gap-4 md:grid-cols-2">
+                  <div className="grid gap-4 md:grid-cols-1 lg:grid-cols-2 md:space-y-4 space-y-4">
                     {/* Session Analytics */}
-                    <div className="space-y-4"></div>
-                    <h3 className="text-lg font-semibold">Session Analytics</h3>
+                    <h3 className="text-lg font-semibold col-span-1 lg:col-span-2">
+                    Session Analytics
+                    </h3>
 
+                    <div className="space-y-4">
+                    {/* Session Score */}
                     <Card>
                       <CardContent className="p-4">
                       <div className="flex justify-between items-center">
@@ -406,399 +468,367 @@ export default function Dashboard() {
                         <p className="text-sm text-muted-foreground">
                           Current Session Score
                         </p>
-                        <p className="text-2xl font-bold">92/100</p>
+
+                        <p className="text-2xl font-bold">
+                          {Math.round(
+                          (workoutData.squat_counter + workoutData.left_counter + workoutData.right_counter)
+                          )}/100
+                        </p>
                         </div>
-                        <Button
-                        variant="outline"
-                        onClick={async () => {
-                          try {
-                          await fetch(backendConfig.endpoints.formScores, {
-                            method: "POST",
-                            headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify({
-                            exercise: "bicep_curl",
-                            reps: workoutData.left_counter + workoutData.right_counter,
-                            target_angle: 90,
-                            actual_angle: 85,
-                            }),
-                          });
-                          toast({ title: "Session saved successfully" });
-                          } catch (error) {
-                          toast({
-                            variant: "destructive",
-                            title: "Failed to save session",
-                          });
-                          }
-                        }}
-                        >
-                        Save Session
-                        </Button>
                       </div>
                       </CardContent>
                     </Card>
 
+                    {/* Recent Workouts */}
                     <Card>
                       <CardContent className="p-4">
-                        <h3 className="text-lg font-semibold mb-3">Recent Workouts</h3>
-                        <div className="overflow-x-auto">
-                          <table className="w-full text-sm">
-                            <thead>
-                              <tr className="border-b">
-                                <th className="py-3 px-4 text-left">Date</th>
-                                <th className="py-3 px-4 text-left">Exercise</th>
-                                <th className="py-3 px-4 text-right">Reps</th>
-                                <th className="py-3 px-4 text-right">Form Score</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {recentWorkouts.map((workout) => (
-                                <tr key={workout.id} className="border-b hover:bg-muted/50">
-                                  <td className="py-3 px-4">{workout.date}</td>
-                                  <td className="py-3 px-4">{workout.exercise}</td>
-                                  <td className="py-3 px-4 text-right">{workout.reps}</td>
-                                  <td className="py-3 px-4 text-right">{workout.formScore}</td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
+                      <h3 className="text-lg font-semibold mb-3">
+                        Recent Workouts
+                      </h3>
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-sm">
+                        <thead>
+                          <tr className="border-b">
+                          <th className="py-3 px-4 text-left">Date</th>
+                          <th className="py-3 px-4 text-left">
+                            Exercise
+                          </th>
+                          <th className="py-3 px-4 text-right">Reps</th>
+                          <th className="py-3 px-4 text-right">
+                            Form Score
+                          </th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {recentWorkouts.map((workout) => (
+                          <tr
+                            key={workout.id}
+                            className="border-b hover:bg-muted/50"
+                          >
+                            <td className="py-3 px-4">
+                            {workout.date}
+                            </td>
+                            <td className="py-3 px-4">
+                            {workout.exercise}
+                            </td>
+                            <td className="py-3 px-4 text-right">
+                            {workout.reps}
+                            </td>
+                            <td className="py-3 px-4 text-right">
+                            {workout.formScore}
+                            </td>
+                          </tr>
+                          ))}
+                        </tbody>
+                        </table>
+                      </div>
                       </CardContent>
                     </Card>
                     </div>
 
                     {/* Performance Insights */}
-                    <div className="space-y-4"></div>
-                    <h3 className="text-lg font-semibold">Performance Insights</h3>
-
                     <Card>
+                    <CardHeader>
+                      <div className="space-y-4"></div>
+                      <h3 className="text-lg font-semibold">
+                      Performance Insights
+                      </h3>
+                    </CardHeader>
+
+                    <CardContent>
+                      <Card>
                       <CardContent className="p-4 h-[300px]">
-                      <Line options={lineOptions} data={progressData} />
+                        <Line options={lineOptions} data={progressData} />
                       </CardContent>
+                      </Card>
+                    </CardContent>
                     </Card>
-
-                    <Card>
-                      <CardContent className="p-4">
-                      <div className="flex justify-between items-center mb-4"></div>
-                        <h3 className="text-lg font-semibold">Form Feedback</h3>
-                        <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={async () => {
-                          setIsLoadingFeedback(true);
-                          try {
-                          const response = await fetch(
-                            backendConfig.endpoints.formFeedback
-                          );
-                          const data = await response.json();
-                          setFormFeedback(
-                            data.feedback
-                            .split("\n")
-                            .map((item: string, index: number) => ({
-                              id: index,
-                              content: item,
-                            }))
-                          );
-                          } catch (error) {
-                          toast({
-                            variant: "destructive",
-                            title: "Failed to load feedback",
-                          });
-                          }
-                          setIsLoadingFeedback(false);
-                        }}
-                        >
-                        {isLoadingFeedback ? "Refreshing..." : "Refresh Feedback"}
-                        </Button>
-                        <div className="space-y-4">
-                          {formFeedback.map((item) => (
-                            <div key={item.id} className="flex items-start gap-4">
-                              <div className="mt-1 p-1.5 rounded-full bg-gym-purple text-white">
-                                <TrendingUp className="h-4 w-4" />
-                              </div>
-                              <p className="text-sm">{item.content}</p>
-                            </div>
-                          ))}
-                        </div>
-                      </CardContent>
-                    </Card>
+                  </div>
                   </motion.div>
                 </TabsContent>
 
                 {/* Diet Suggestions Tab */}
                 <TabsContent value="diet" className="space-y-4">
-                  <div className="grid gap-4 md:grid-cols-2">
+                  <motion.div
+                  key="workout"
+                  initial="hidden"
+                  animate="visible"
+                  exit="exit"
+                  variants={tabVariants}
+                  transition={{ duration: 0.2 }}
+                  >
+                  <div className="grid gap-4 md:grid-cols-1 lg:grid-cols-2">
                     <div className="space-y-4 relative">
-                      <h3 className="text-lg font-semibold">
-                        Personalized Meal Plan
-                      </h3>
+                    <h3 className="text-lg font-semibold">
+                      Personalized Meal Plan
+                    </h3>
 
-                      {/* Diet Input Form */}
-                      <Card className="relative">
-                        <CardContent className="p-4 space-y-4">
-                          {/* Overlay for Suggestions */}
-                          {showSuggestionsOverlay && (
-                            <div className="absolute inset-0 z-10 bg-white/95 rounded-lg flex flex-col">
-                              <div className="flex justify-between items-center mb-4 p-2 border-b">
-                                <h4 className="text-lg font-semibold">
-                                  Your Meal Plan
-                                </h4>
-                                <Button
-                                  variant="outline"
-                                  onClick={() =>
-                                    setShowSuggestionsOverlay(false)
-                                  }
-                                >
-                                  Back to Edit
-                                </Button>
-                              </div>
-                              <div className="flex-1 overflow-y-auto space-y-4 p-2">
-                                {dietSuggestions.length === 0 ? (
-                                  <p className="text-center text-muted-foreground">
-                                    No suggestions found.
-                                  </p>
-                                ) : (
-                                  dietSuggestions.map((item) => (
-                                    <div
-                                      key={item.id}
-                                      className="border-l-4 border-gym-purple pl-4 py-2"
-                                    >
-                                      <p
-                                        className="text-sm"
-                                        dangerouslySetInnerHTML={{ __html: marked(item.content) }}
-                                      ></p>
-                                    </div>
-                                  ))
-                                )}
-                              </div>
-                            </div>
-                          )}
-
-                          <form
-                            onSubmit={dietForm.handleSubmit(async (data) => {
-                              setIsLoadingDiet(true);
-                              try {
-                                const response = await fetch(
-                                  backendConfig.endpoints.dietSuggestions,
-                                  {
-                                    method: "POST",
-                                    headers: {
-                                      "Content-Type": "application/json",
-                                    },
-                                    body: JSON.stringify(data),
-                                  }
-                                );
-
-                                if (!response.ok) throw new Error("API Error");
-
-                                const result = await response.json();
-                                setDietSuggestions(
-                                  result.suggestion
-                                    .split("\n")
-                                    .filter((line) => line.trim())
-                                    .map((item: string, index: number) => ({
-                                      id: index,
-                                      content: item,
-                                    }))
-                                );
-                                setShowSuggestionsOverlay(true);
-                              } catch (error) {
-                                toast({
-                                  variant: "destructive",
-                                  title: "Failed to generate suggestions",
-                                  description:
-                                    "Please check your connection and try again",
-                                });
-                              }
-                              setIsLoadingDiet(false);
-                            })}
-                            className={
-                              showSuggestionsOverlay
-                                ? "pointer-events-none opacity-50"
-                                : ""
-                            }
+                    {/* Diet Input Form */}
+                    <Card className="relative">
+                      <CardContent className="p-4 space-y-4">
+                      {/* Overlay for Suggestions */}
+                      {showSuggestionsOverlay && (
+                        <div className="absolute inset-0 z-10 bg-white/95 rounded-lg flex flex-col">
+                        <div className="flex justify-between items-center mb-4 p-2 border-b">
+                          <h4 className="text-lg font-semibold">
+                          Your Meal Plan
+                          </h4>
+                          <Button
+                          variant="outline"
+                          onClick={() =>
+                            setShowSuggestionsOverlay(false)
+                          }
                           >
-                            <div className="grid grid-cols-2 gap-4">
-                              <div className="space-y-2">
-                                <Label htmlFor="age">Age</Label>
-                                <Input
-                                  {...dietForm.register("age", {
-                                    required: true,
-                                  })}
-                                  type="number"
-                                  className="bg-muted/50"
-                                />
-                              </div>
-                              <div className="space-y-2">
-                                <Label htmlFor="weight">Weight (kg)</Label>
-                                <Input
-                                  {...dietForm.register("weight", {
-                                    required: true,
-                                  })}
-                                  type="number"
-                                  className="bg-muted/50"
-                                />
-                              </div>
-                              <div className="space-y-2">
-                                <Label htmlFor="height">Height (cm)</Label>
-                                <Input
-                                  {...dietForm.register("height", {
-                                    required: true,
-                                  })}
-                                  type="number"
-                                  className="bg-muted/50"
-                                />
-                              </div>
-                              <div className="space-y-2">
-                                <Label htmlFor="goal">Fitness Goal</Label>
-                                <Input
-                                  {...dietForm.register("goal", {
-                                    required: true,
-                                  })}
-                                  className="bg-muted/50"
-                                  placeholder="e.g., Muscle gain, Weight loss"
-                                />
-                              </div>
-                            </div>
-
-                            <div className="mt-4 space-y-2">
-                              <Label>Dietary Preferences & Restrictions</Label>
-                              <Textarea
-                                {...dietForm.register("preferences")}
-                                className="bg-muted/50 h-24"
-                                placeholder="e.g., Vegetarian, Gluten-free, Food allergies..."
-                              />
-                            </div>
-
-                            <Button
-                              type="submit"
-                              className="mt-4 bg-gym-purple hover:bg-gym-purple-dark w-full"
-                              disabled={isLoadingDiet || showSuggestionsOverlay}
+                          Back to Edit
+                          </Button>
+                        </div>
+                        <div className="flex-1 overflow-y-auto space-y-4 p-2">
+                          {dietSuggestions.length === 0 ? (
+                          <p className="text-center text-muted-foreground">
+                            No suggestions found.
+                          </p>
+                          ) : (
+                          dietSuggestions.map((item) => (
+                            <div
+                            key={item.id}
+                            className="border-l-4 border-gym-purple pl-4 py-2"
                             >
-                              {isLoadingDiet ? (
-                                <div className="flex items-center gap-2">
-                                  <svg
-                                    className="animate-spin h-4 w-4"
-                                    viewBox="0 0 24 24"
-                                  >
-                                    <circle
-                                      className="opacity-25"
-                                      cx="12"
-                                      cy="12"
-                                      r="10"
-                                      stroke="currentColor"
-                                      strokeWidth="4"
-                                      fill="none"
-                                    />
-                                    <path
-                                      className="opacity-75"
-                                      fill="currentColor"
-                                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                                    />
-                                  </svg>
-                                  Generating...
-                                </div>
-                              ) : (
-                                "Generate Plan"
-                              )}
-                            </Button>
-                          </form>
-                        </CardContent>
-                      </Card>
+                            <p
+                              className="text-sm"
+                              dangerouslySetInnerHTML={{
+                              __html: marked(item.content),
+                              }}
+                            ></p>
+                            </div>
+                          ))
+                          )}
+                        </div>
+                        </div>
+                      )}
+
+                      <form
+                        onSubmit={dietForm.handleSubmit(async (data) => {
+                        setIsLoadingDiet(true);
+                        try {
+                          const response = await fetch(
+                          backendConfig.endpoints.dietSuggestions,
+                          {
+                            method: "POST",
+                            headers: {
+                            "Content-Type": "application/json",
+                            },
+                            body: JSON.stringify(data),
+                          }
+                          );
+
+                          if (!response.ok)
+                          throw new Error("API Error");
+
+                          const result = await response.json();
+                          setDietSuggestions(
+                          result.suggestion
+                            .split("\n")
+                            .filter((line) => line.trim())
+                            .map((item: string, index: number) => ({
+                            id: index,
+                            content: item,
+                            }))
+                          );
+                          setShowSuggestionsOverlay(true);
+                        } catch (error) {
+                          toast({
+                          variant: "destructive",
+                          title: "Failed to generate suggestions",
+                          description:
+                            "Please check your connection and try again",
+                          });
+                        }
+                        setIsLoadingDiet(false);
+                        })}
+                        className={
+                        showSuggestionsOverlay
+                          ? "pointer-events-none opacity-50"
+                          : ""
+                        }
+                      >
+                        <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="age">Age</Label>
+                          <Input
+                          {...dietForm.register("age", {
+                            required: true,
+                          })}
+                          type="number"
+                          className="bg-muted/50"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="weight">Weight (kg)</Label>
+                          <Input
+                          {...dietForm.register("weight", {
+                            required: true,
+                          })}
+                          type="number"
+                          className="bg-muted/50"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="height">Height (cm)</Label>
+                          <Input
+                          {...dietForm.register("height", {
+                            required: true,
+                          })}
+                          type="number"
+                          className="bg-muted/50"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="goal">Fitness Goal</Label>
+                          <Input
+                          {...dietForm.register("goal", {
+                            required: true,
+                          })}
+                          className="bg-muted/50"
+                          placeholder="e.g., Muscle gain, Weight loss"
+                          />
+                        </div>
+                        </div>
+
+                        <div className="mt-4 space-y-2">
+                        <Label>
+                          Dietary Preferences & Restrictions
+                        </Label>
+                        <Textarea
+                          {...dietForm.register("preferences")}
+                          className="bg-muted/50 h-24"
+                          placeholder="e.g., Vegetarian, Gluten-free, Food allergies..."
+                        />
+                        </div>
+
+                        <Button
+                        type="submit"
+                        className="mt-4 bg-gym-purple hover:bg-gym-purple-dark w-full"
+                        disabled={
+                          isLoadingDiet || showSuggestionsOverlay
+                        }
+                        >
+                        {isLoadingDiet ? (
+                          <div className="flex items-center gap-2">
+                          <svg
+                            className="animate-spin h-4 w-4"
+                            viewBox="0 0 24 24"
+                          >
+                            <circle
+                            className="opacity-25"
+                            cx="12"
+                            cy="12"
+                            r="10"
+                            stroke="currentColor"
+                            strokeWidth="4"
+                            fill="none"
+                            />
+                            <path
+                            className="opacity-75"
+                            fill="currentColor"
+                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                            />
+                          </svg>
+                          Generating...
+                          </div>
+                        ) : (
+                          "Generate Plan"
+                        )}
+                        </Button>
+                      </form>
+                      </CardContent>
+                    </Card>
                     </div>
                     {/* Nutrition Overview */}
                     <div className="space-y-4">
-                      <h3 className="text-lg font-semibold">
-                        Nutrition Overview
-                      </h3>
-                      <Card>
-                        <CardContent className="p-4">
-                          <div className="space-y-2">
-                            <div className="flex justify-between items-center">
-                              <span className="text-sm font-medium">
-                                Calories
-                              </span>
-                              <span className="text-sm">
-                                {2500}kcal
-                              </span>
-                            </div>
-                            <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
-                              <div
-                                className="h-full bg-green-500 rounded-full"
-                                style={{
-                                  width: `${Math.min(
-                                    100,
-                                    (2500 / 2800) * 100
-                                  )}%`,
-                                }}
-                              ></div>
-                            </div>
-                          </div>
+                    <h3 className="text-lg font-semibold">
+                      Nutrition Overview
+                    </h3>
+                    <Card>
+                      <CardContent className="p-4">
+                      <div className="space-y-2">
+                        <div className="flex justify-between items-center">
+                        <span className="text-sm font-medium">
+                          Calories
+                        </span>
+                        <span className="text-sm">{2500}kcal</span>
+                        </div>
+                        <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-green-500 rounded-full"
+                          style={{
+                          width: `${Math.min(
+                            100,
+                            (2500 / 2800) * 100
+                          )}%`,
+                          }}
+                        ></div>
+                        </div>
+                      </div>
 
-                          <div className="space-y-2 mt-4">
-                            <div className="flex justify-between items-center">
-                              <span className="text-sm font-medium">
-                                Protein
-                              </span>
-                              <span className="text-sm">
-                                {120}g
-                              </span>
-                            </div>
-                            <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
-                              <div
-                                className="h-full bg-blue-500 rounded-full"
-                                style={{
-                                  width: `${Math.min(
-                                    100,
-                                    (120 / 200) * 100
-                                  )}%`,
-                                }}
-                              ></div>
-                            </div>
-                          </div>
+                      <div className="space-y-2 mt-4">
+                        <div className="flex justify-between items-center">
+                        <span className="text-sm font-medium">
+                          Protein
+                        </span>
+                        <span className="text-sm">{120}g</span>
+                        </div>
+                        <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-blue-500 rounded-full"
+                          style={{
+                          width: `${Math.min(
+                            100,
+                            (120 / 200) * 100
+                          )}%`,
+                          }}
+                        ></div>
+                        </div>
+                      </div>
 
-                          <div className="space-y-2 mt-4">
-                            <div className="flex justify-between items-center">
-                              <span className="text-sm font-medium">Carbs</span>
-                              <span className="text-sm">
-                                {140}g
-                              </span>
-                            </div>
-                            <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
-                              <div
-                                className="h-full bg-amber-500 rounded-full"
-                                style={{
-                                  width: `${Math.min(
-                                    100,
-                                    (140 / 300) * 100
-                                  )}%`,
-                                }}
-                              ></div>
-                            </div>
-                          </div>
+                      <div className="space-y-2 mt-4">
+                        <div className="flex justify-between items-center">
+                        <span className="text-sm font-medium">
+                          Carbs
+                        </span>
+                        <span className="text-sm">{140}g</span>
+                        </div>
+                        <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-amber-500 rounded-full"
+                          style={{
+                          width: `${Math.min(
+                            100,
+                            (140 / 300) * 100
+                          )}%`,
+                          }}
+                        ></div>
+                        </div>
+                      </div>
 
-                          <div className="space-y-2 mt-4">
-                            <div className="flex justify-between items-center">
-                              <span className="text-sm font-medium">Fat</span>
-                              <span className="text-sm">
-                                {35}g
-                              </span>
-                            </div>
-                            <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
-                              <div
-                                className="h-full bg-red-500 rounded-full"
-                                style={{
-                                  width: `${Math.min(
-                                    100,
-                                    (35 / 80) * 100
-                                  )}%`,
-                                }}
-                              ></div>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
+                      <div className="space-y-2 mt-4">
+                        <div className="flex justify-between items-center">
+                        <span className="text-sm font-medium">Fat</span>
+                        <span className="text-sm">{35}g</span>
+                        </div>
+                        <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-red-500 rounded-full"
+                          style={{
+                          width: `${Math.min(100, (35 / 80) * 100)}%`,
+                          }}
+                        ></div>
+                        </div>
+                      </div>
+                      </CardContent>
+                    </Card>
                     </div>
                   </div>
+                  </motion.div>
                 </TabsContent>
               </Tabs>
             </CardContent>
