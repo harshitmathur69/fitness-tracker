@@ -755,7 +755,7 @@ export default function Dashboard() {
                         <span className="text-sm font-medium">
                           Calories
                         </span>
-                        <span className="text-sm">{2500}kcal</span>
+                        <span className="text-sm">{2600}kcal</span>
                         </div>
                         <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
                         <div
@@ -763,7 +763,7 @@ export default function Dashboard() {
                           style={{
                           width: `${Math.min(
                             100,
-                            (2500 / 2800) * 100
+                            (2600 / 3000) * 100
                           )}%`,
                           }}
                         ></div>
@@ -775,7 +775,7 @@ export default function Dashboard() {
                         <span className="text-sm font-medium">
                           Protein
                         </span>
-                        <span className="text-sm">{120}g</span>
+                        <span className="text-sm">{100}g</span>
                         </div>
                         <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
                         <div
@@ -783,7 +783,7 @@ export default function Dashboard() {
                           style={{
                           width: `${Math.min(
                             100,
-                            (120 / 200) * 100
+                            (100 / 200) * 100
                           )}%`,
                           }}
                         ></div>

@@ -41,7 +41,7 @@ export default function Landing() {
         style={{ scrollBehavior: "smooth" }}
       >
         {/* Hero Section */}
-        <section className="py-20 md:py-28 bg-gradient-to-b from-white to-gym-purple-light min-h-screen snap-start flex items-center">
+        <section className="py-20 bg-gradient-to-b from-white to-gym-purple-light min-h-screen snap-start flex items-center">
           <div className="container px-4 md:px-6">
             <motion.div
               variants={containerVariants}
@@ -49,14 +49,14 @@ export default function Landing() {
               animate="visible"
               className="grid gap-6 lg:grid-cols-2 lg:gap-12 items-center"
             >
-              <motion.div variants={itemVariants} className="flex flex-col justify-center space-y-4">
+              <motion.div variants={itemVariants} className="flex flex-col justify-center items-center lg:items-start space-y-4">
                 <div className="inline-block px-3 py-1 rounded-full bg-gym-purple/10 text-gym-purple font-medium text-sm mb-2 w-fit">
                   Introducing AI Gym Tracker
                 </div>
                 <h1 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl lg:text-6xl">
                   Count Your Curls with <span className="text-gym-purple">AI Precision</span>
                 </h1>
-                <p className="text-muted-foreground md:text-xl">
+                <p className="text-muted-foreground md:text-lg text-center lg:text-left max-w-2xl">
                   The intelligent workout tracker that counts your bicep curls and squats in real-time using your webcam.<br />
                   <span className="text-gym-purple font-semibold">No wearables, no hassle.</span>
                 </p>
@@ -99,7 +99,7 @@ export default function Landing() {
                     <motion.img
                       src="https://images.unsplash.com/photo-1581009146145-b5ef050c2e1e?fit=crop&w=800&h=600"
                       alt="Person doing bicep curl"
-                      className="w-full h-auto object-cover aspect-video"
+                      className="w-full h-auto object-cover aspect-video max-w-3xl md:max-w-auto"
                       initial={{ opacity: 0, scale: 0.95 }}
                       animate={{ opacity: 1, scale: 1 }}
                       transition={{ delay: 0.2, duration: 0.5 }}
@@ -179,7 +179,7 @@ export default function Landing() {
                 <img
                   src="https://plus.unsplash.com/premium_photo-1663134093726-cb77e87d42a8?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTN8fGd5bSUyMGV4ZXJjaXNlfGVufDB8fDB8fHww"
                   alt="Motivated athlete"
-                  className="rounded-lg shadow-lg w-full max-w-xl md:max-w-5xl lg:max-w-5xl h-auto object-cover"
+                  className="rounded-lg shadow-lg w-full max-w-xl md:max-w-2xl lg:max-w-5xl h-auto object-cover"
                 />
               </motion.div>
               {/* Right: CTA Content */}
@@ -189,20 +189,20 @@ export default function Landing() {
               >
                 <Dumbbell className="h-12 w-12 mb-6 animate-pulse-slow" />
                 <h2 className="text-3xl font-bold tracking-tighter md:text-4xl">
-                  Ready to transform your workout?
+                  Ready to transform your workout ?
                 </h2>
                 <p className="mt-4 text-gym-purple-light text-lg max-w-2xl">
                   <span className="block mb-3">
                     <strong>Start for free</strong> and experience the future of fitness.
                   </span>
                   <span className="block mb-3">
-                    <strong>No hardware required</strong> – just your camera and your motivation.
+                    <strong>No hardware required</strong> - just your camera and your motivation.
                   </span>
                   <span className="block">
                     <strong>See your progress</strong> with advanced analytics and personalized plans.
                   </span>
                 </p>
-                <div className="mt-6 w-full flex flex-col sm:flex-row gap-4">
+                <div className="mt-6 w-full flex flex-col sm:flex-row gap-4 items-center justify-center lg:justify-start">
                   <Link to="/signup" className="w-full sm:w-auto">
                     <Button
                       size="lg"

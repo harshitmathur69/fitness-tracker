@@ -27,6 +27,7 @@ left_knee_smoothed = right_knee_smoothed = None
 exercise_data = {"bicep_curl": [], "squat": []}
 diet = []  
 feedback_list = []
+cap = cv2.VideoCapture(0).release()
 
 
 @app.route('/set_mode', methods=['POST'])
@@ -52,7 +53,7 @@ def generate_frames():
     global left_counted, right_counted, left_angle_smoothed, right_angle_smoothed
     global squat_counter, squat_stage, squat_counted
     global left_knee_smoothed, right_knee_smoothed
-    global current_mode
+    global current_mode, cap
 
     cap = cv2.VideoCapture(0)
     with mp_pose.Pose(min_detection_confidence=0.5, min_tracking_confidence=0.5) as pose:
@@ -149,12 +150,30 @@ def generate_frames():
             yield (b'--frame\r\n'
                    b'Content-Type: image/jpeg\r\n\r\n' + frame_bytes + b'\r\n')
 
+def release_camera():
+    global cap
+    if cap.isOpened():
+        cap = cv2.VideoCapture(0).release()
+    print("Camera released.")
 
-@app.route('/video_feed')
+@app.route('/video_feed', methods=['GET', 'POST'])
 def video_feed():
-    return Response(generate_frames(), mimetype='multipart/x-mixed-replace; boundary=frame')
-
-
+    """
+    Video streaming generator function.
+    Accepts a URL parameter: ?on=true or ?on=false
+    Returns streaming video only if on=true.
+    """
+    global cap
+    on_param = request.args.get('on', 'false').lower()
+    if on_param == 'true':
+        # Start streaming frames
+        return Response(generate_frames(), mimetype='multipart/x-mixed-replace; boundary=frame')
+    else:
+        # Return 204 No Content or a message indicating streaming is off
+        # cap.release()  # Release the camera if it was opened
+        return Response(release_camera(), status=204)
+  
+    
 @app.route('/workout_data')
 def workout_data():
     return jsonify({
@@ -197,7 +216,6 @@ def diet_suggestion():
         )
 
         diet_entry = {
-            "timestamp": datetime.now().isoformat(),
             "suggestion": chat_completion.choices[0].message.content,
             "analysis": None
         }
