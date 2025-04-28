@@ -230,9 +230,12 @@ export default function Dashboard() {
       const data = await response.json();
       console.log(data);
       if (data.error === "No workout data") {
-        setFormFeedback(null);
+        toast({
+          variant: "default",
+          title: "No workout data",
+          description: "Please start a workout session to receive feedback.",
+        });
       } else {
-        setFormFeedback(data.feedback);
         console.log(formFeedback);
       }
     } catch (error) {
@@ -245,6 +248,30 @@ export default function Dashboard() {
     setIsLoadingFeedback(false);
   };
 
+  useEffect(() => {
+    try {
+      const fetchFormFeedback = async () => {
+        const response = await fetch(backendConfig.endpoints.feedback, {
+          method: "GET",
+        });
+        const data = await response.json();
+        if (data.error === "No workout data") {
+          setFormFeedback(null);
+        } else {
+          setFormFeedback(data.feedback);
+          console.log(formFeedback);
+        }
+      };
+      fetchFormFeedback();
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Failed to fetch form feedback",
+        description: "Please check your connection and try again",
+      });
+    }
+  }, [backendAvailable, isLoadingFeedback]);
+
   // Live recent workouts (current session)
   const recentWorkouts = [
     {
@@ -253,7 +280,12 @@ export default function Dashboard() {
       exercise: "Bicep Curls",
       reps: workoutData.left_counter + workoutData.right_counter,
       duration: "Live",
-      formScore: 85,
+      formScore:
+        formFeedback
+          .filter((item) => item.exercise === "bicep_curl")
+          .reduce((acc, item) => acc + item.score, 0) /
+          formFeedback.filter((item) => item.exercise === "bicep_curl")
+            .length || 0,
     },
     {
       id: 2,
@@ -261,7 +293,11 @@ export default function Dashboard() {
       exercise: "Squats",
       reps: workoutData.squat_counter,
       duration: "Live",
-      formScore: 60,
+      formScore:
+        formFeedback
+          .filter((item) => item.exercise === "squat")
+          .reduce((acc, item) => acc + item.score, 0) /
+          formFeedback.filter((item) => item.exercise === "squat").length || 0,
     },
   ];
 
@@ -472,11 +508,14 @@ export default function Dashboard() {
                                 </p>
 
                                 <p className="text-2xl font-bold">
-                                  {Math.round(
-                                    workoutData.squat_counter +
-                                      workoutData.left_counter +
-                                      workoutData.right_counter
-                                  )}
+                                    {formFeedback.length === 0
+                                      ? 0
+                                      : Math.round(
+                                        formFeedback.reduce(
+                                        (acc, item) => acc + item.score,
+                                        0
+                                        ) / formFeedback.length
+                                      )}
                                   /100
                                 </p>
                               </div>
@@ -509,25 +548,28 @@ export default function Dashboard() {
                                   </tr>
                                 </thead>
                                 <tbody>
-                                  {recentWorkouts.map((workout) => (
-                                    <tr
-                                      key={workout.id}
-                                      className="border-b hover:bg-muted/50"
-                                    >
-                                      <td className="py-3 px-4">
-                                        {workout.date}
-                                      </td>
-                                      <td className="py-3 px-4">
-                                        {workout.exercise}
-                                      </td>
-                                      <td className="py-3 px-4 text-right">
-                                        {workout.reps}
-                                      </td>
-                                      <td className="py-3 px-4 text-right">
-                                        {workout.formScore}
-                                      </td>
-                                    </tr>
-                                  ))}
+                                  {recentWorkouts.map(
+                                    (workout) =>
+                                      workout.reps > 0 && (
+                                        <tr
+                                          key={workout.id}
+                                          className="border-b hover:bg-muted/50"
+                                        >
+                                          <td className="py-3 px-4">
+                                            {workout.date}
+                                          </td>
+                                          <td className="py-3 px-4">
+                                            {workout.exercise}
+                                          </td>
+                                          <td className="py-3 px-4 text-right">
+                                            {workout.reps}
+                                          </td>
+                                          <td className="py-3 px-4 text-right">
+                                            {workout.formScore}
+                                          </td>
+                                        </tr>
+                                      )
+                                  )}
                                 </tbody>
                               </table>
                             </div>

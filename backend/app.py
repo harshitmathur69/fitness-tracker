@@ -27,6 +27,7 @@ left_knee_smoothed = right_knee_smoothed = None
 exercise_data = {"bicep_curl": [], "squat": []}
 diet = []  
 feedback_list = []
+current_id = 1
 cap = cv2.VideoCapture(0).release()
 
 
@@ -296,7 +297,7 @@ def form_feedback():
     global feedback_list
     print("Exercise data:", exercise_data)  # Debugging line
     workouts = exercise_data
-    current_id = 1
+    global current_id
 
     try:
         if not workouts["bicep_curl"] and not workouts["squat"]:
@@ -369,6 +370,12 @@ def form_feedback():
 
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
+
+@app.route('/feedback', methods=['GET'])
+def get_feedback():
+    global feedback_list    
+    # Return the latest feedback entry
+    return jsonify({"success": True, "feedback": feedback_list[::-1]})
 
 
 @app.route('/form_score', methods=['GET'])

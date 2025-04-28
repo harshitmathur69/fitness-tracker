@@ -24,6 +24,7 @@ export const backendConfig = {
     dietSuggestions: `${BASE_URL}/diet_suggestion`,
     dietAnalysis: `${BASE_URL}/diet_analysis`,
     formFeedback: `${BASE_URL}/form_feedback`,
+    feedback: `${BASE_URL}/feedback`,
     formScore: `${BASE_URL}/form_score`,
     
     // Mode configuration endpoint
